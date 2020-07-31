@@ -1,0 +1,41 @@
+#!/bin/sh
+# ******************************************************************************
+# filename    : recovery_1st_stage
+# description : Recovery script for streaming replication.
+# execuser    : postgres
+# usage       : N/A
+# ******************************************************************************
+# OS          : Red Hat Enterprise Linux 7.x
+# Pgpool-II   : Pgpool-II 3.7.x
+# PostgreSQL  : PostgreSQL 9.6.x
+# ******************************************************************************
+
+################################################################################
+# Set Environment
+################################################################################
+PGDATA=$1
+REMOTE_HOST=$2
+REMOTE_PGDATA=$3
+PORT=$4
+PGHOME=/usr/pgsql-9.6
+ARCHIVEDIR=/var/lib/pgsql/9.6/backups/pg_xlog_archive
+HOSTNAME=$(hostname)
+
+################################################################################
+# Execute Recovery by using Streaming Replication
+################################################################################
+ssh -T postgres@$REMOTE_HOST "
+rm -rf $REMOTE_PGDATA
+$REMOTE_PGDATA/bin/pg_basebackup -h $HOSTNAME -U repl -D $REMOTE_PGDATA -x -c fast
+rm -rf $ARCHIVEDIR/*
+
+cd $REMOTE_PGDATA
+cp postgresql.conf postgresql.conf.bak
+sed -e 's/#*hot_standby = off/hot_standby = on/' postgresql.conf.bak > postgresql.conf
+rm -f postgresql.conf.bak
+cat > recovery.conf << EOT
+standby_mode = 'on'
+primary_conninfo = 'host="$HOSTNAME" port=$PORT user=repl'
+restore_command = 'scp $HOSTNAME:$ARCHIVEDIR/%f %p'
+EOT
+"

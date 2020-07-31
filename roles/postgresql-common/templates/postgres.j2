@@ -1,0 +1,9 @@
+{{ pg_script_log_dir }}/*log
+{{ pg_log_directory }}/*log
+{
+    daily
+    rotate {{ pg_log_generation }}
+    create 0600 postgres postgres
+    dateext
+    missingok
+}

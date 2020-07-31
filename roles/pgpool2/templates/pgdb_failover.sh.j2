@@ -1,0 +1,56 @@
+#!/bin/sh
+# ******************************************************************************
+# filename    : pgdb_failover.sh
+# description : Execute command by failover
+# execuser    : pgpool
+# usage       : pgdb_failover.sh %d %P %H %R
+# ******************************************************************************
+# OS          : Red Hat Enterprise Linux 7.x
+# Pgpool-II   : Pgpool-II 3.7.x
+# PostgreSQL  : PostgreSQL 9.6.x
+# ******************************************************************************
+# parameter       description
+# --------------  --------------------------------------------------------------
+# %d              node id
+# %P              old primary node id
+# %H              new master node host name
+# %R              new master database cluster path
+# ******************************************************************************
+# special values:  %d = node id
+#                  %h = host name
+#                  %p = port number
+#                  %D = database cluster path
+#                  %m = new master node id
+#                  %M = old master node id
+#                  %H = new master node host name
+#                  %P = old primary node id
+#                  %R = new master database cluster path
+#                  %r = new master port number
+#                  %% = '%' character
+
+################################################################################
+# Set Environment
+################################################################################
+FALLING_NODE=$1          # %d
+OLD_PRIMARY=$2           # %P
+NEW_PRIMARY=$3           # %H
+PGDATA=$4                # %R
+LOG_FILE={{ pgp2_logdir }}/pgdb_failover.log
+PGHOME=/usr/pgsql-9.6
+pp () { date "+%Y/%m/%d %H:%M:%S $*" >> $LOG_FILE; }
+
+pp --- BEGIN pgdb_failover.sh ---
+################################################################################
+#  Execute Failover
+################################################################################
+pp "failed_node_id=$FALLING_NODE new_primary=$NEW_PRIMARY"
+
+if [ $FALLING_NODE = $OLD_PRIMARY ]; then
+    if [ $UID -eq 0 ]
+    then
+        su postgres -c "ssh -T postgres@$NEW_PRIMARY $PGHOME/bin/pg_ctl promote -D $PGDATA"
+    else
+        ssh -T postgres@$NEW_PRIMARY $PGHOME/bin/pg_ctl promote -D $PGDATA
+    fi
+fi;
+pp --- END pgdb_failover.sh ---

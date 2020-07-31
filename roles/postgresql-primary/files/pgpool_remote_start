@@ -1,0 +1,21 @@
+#!/bin/sh
+# ******************************************************************************
+# filename    : pgpool_remote_start
+# description : launch PostgreSQL
+# execuser    : postgres
+# usage       : N/A
+# ******************************************************************************
+# OS          : Red Hat Enterprise Linux 7.x
+# Pgpool-II   : Pgpool-II 3.7.x
+# PostgreSQL  : PostgreSQL 9.6.x
+# ******************************************************************************
+
+################################################################################
+# Set Environment
+################################################################################
+PGHOME=/usr/pgsql-9.6
+REMOTE_HOST=$1
+REMOTE_PGDATA=$2
+
+# リカバリ先のPostgreSQLを起動
+ssh -T $REMOTE_HOST $PGHOME/bin/pg_ctl -w -D $REMOTE_PGDATA start > /dev/null 2>&1 < /dev/null &

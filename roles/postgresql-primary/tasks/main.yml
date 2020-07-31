@@ -1,0 +1,97 @@
+---
+
+- name: Run postgresql-common role
+  include_role:
+    name: postgresql-common
+
+- name: Check for initdb
+  stat: path={{ pg_data_dir }}/PG_VERSION
+  register: reg_pg_data
+  changed_when: false
+
+- name: Initdb
+  command: /usr/pgsql-9.6/bin/postgresql96-setup initdb
+  when: reg_pg_data.stat.exists == false
+
+- name: Copy conf file from templates
+  template: src={{ item.src }} dest={{ pg_data_dir }}/{{ item.src | regex_replace(".j2") }}
+  with_items:
+      - { src: "postgresql.conf.j2" }
+      - { src: "pg_hba.conf.j2" }
+  notify: Restart postgresql
+
+- name: Start postgresql
+  systemd:
+    name: postgresql-9.6
+    state: started
+
+- name: Add Extension
+  become_user: postgres
+  postgresql_ext:
+    name: pgpool_recovery
+    db: template1
+    port: "{{ pg_port }}"
+
+- name: Create DB
+  become_user: postgres
+  postgresql_db:
+    name: "{{ pg_dbname }}"
+    template: template1
+    lc_collate: "{{ pg_lc_collate }}"
+    lc_ctype: "{{ pg_lc_ctype }}"
+    port: "{{ pg_port }}"
+
+- name: Create application user
+  become_user: postgres
+  postgresql_user:
+    db: "{{ pg_dbname }}"
+    name: "{{ pg_app_user }}"
+    password: "{{ pg_app_user_pwd }}"
+    encrypted: yes
+    state: present
+    port: "{{ pg_port }}"
+
+- name: Create replication user
+  become_user: postgres
+  postgresql_user:
+    name: replusr
+    role_attr_flags: REPLICATION
+    port: "{{ pg_port }}"
+
+- name: Check for replication slots
+  become_user: postgres
+  shell: /usr/pgsql-9.6/bin/psql -c "SELECT * FROM pg_replication_slots" | grep {{ pg_repl_slot_name }}
+  register: reg_repl_slot_exist
+  changed_when: false
+  failed_when: reg_repl_slot_exist.rc not in [0, 1]
+
+- name: Create replication slots
+  become_user: postgres
+  command: /usr/pgsql-9.6/bin/psql -c "SELECT * FROM pg_create_physical_replication_slot('{{ pg_repl_slot_name }}')"
+  when: reg_repl_slot_exist.rc == 1
+
+- name: Create healthcheck user
+  become_user: postgres
+  postgresql_user:
+    name: pgpool
+    password: "{{ pg_pgpool_pwd }}"
+    encrypted: yes
+    port: "{{ pg_port }}"
+
+- name: Set password to admin user
+  become_user: postgres
+  postgresql_user:
+    name: postgres
+    password: "{{ pg_postgres_pwd }}"
+    encrypted: yes
+    port: "{{ pg_port }}"
+
+- meta: flush_handlers
+
+- name: Copy recovery operation from files
+  copy: src={{ item }} dest={{ pg_data_dir }} owner=postgres group=postgres mode=0755
+  with_items:
+    - pgpool_remote_start
+    - recovery_1st_stage
+
+...

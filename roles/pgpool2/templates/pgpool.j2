@@ -1,0 +1,7 @@
+{{ pgp2_logdir }}/*log {
+    daily
+    rotate {{ pgp2_log_generation }}
+    create 0644 pgpool pgpool
+    dateext
+    missingok
+}

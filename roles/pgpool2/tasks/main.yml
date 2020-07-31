@@ -1,0 +1,109 @@
+---
+
+- name: Add yum repository for Pgpool-II
+  yum:
+    name: "{{ pgp2_yum_repository }}"
+    state: present
+  environment:
+    http_proxy: "{{ http_proxy_host.stdout | regex_replace('.*= *([^ ]*)', '\\1') }}:{{ http_proxy_port.stdout | regex_replace('.*= *([^ ]*)', '\\1') }}"
+
+- name: Install Pgpool-II-{{ pgp2_version }}
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - pgpool-II-pg96-{{ pgp2_version }}
+    - pgpool-II-pg96-extensions-{{ pgp2_version }}
+
+- name: Create pgpool group
+  group:
+    name: pgpool
+    gid: "{{ pgp2_group_id }}"
+
+- name: Create pgpool user
+  user:
+    name: pgpool
+    uid: "{{ pgp2_user_id }}"
+    group: pgpool
+    shell: /bin/bash
+    home: /etc/pgpool-II
+    comment: Pgpool-II
+
+- name: Change Permission
+  become: yes
+  file:
+    dest: "{{ item }}"
+    mode: u+s
+  with_items:
+    - /sbin/arping
+    - /sbin/ip
+
+- name: Create directory and change owner
+  file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+    owner: pgpool
+    group: pgpool
+    mode: 0755
+  with_items:
+    - /etc/pgpool-II
+    - /etc/pgpool-II/.ssh
+    - /var/run/pgpool
+    - /var/log/pgpool
+
+- name: Upload files
+  copy:
+    src: "{{ item }}"
+    dest: /etc/pgpool-II/.ssh
+    owner: pgpool
+    group: pgpool
+    mode: 0600
+  with_items:
+    - id_rsa
+    - id_rsa.pub
+
+- name: Modify pgpool.service
+  blockinfile:
+    path: /usr/lib/systemd/system/pgpool.service
+    insertafter: ^ExecReload=
+    content: |
+      User=pgpool
+      Group=pgpool
+
+- name: Copy configuration files from templates
+  template:
+    src: "{{ item.src }}"
+    dest: /etc/pgpool-II/{{ item.src | regex_replace(".j2") }}
+    owner: pgpool
+    group: pgpool
+    mode: "{{ item.mode }}"
+  with_items:
+    - { src: "pgpool.conf.j2", mode: "0644" }
+    - { src: "pool_hba.conf.j2", mode: "0644" }
+    - { src: "pcp.conf.j2", mode: "0644" }
+    - { src: "pool_passwd.j2", mode: "0644" }
+    - { src: "pgdb_failover.sh.j2", mode: "0755" }
+  notify: Restart Pgpool-II
+
+- name: Enable service
+  systemd:
+    name: pgpool
+    state: started
+    enabled: yes
+
+- name: Copy logging configuration file from templates
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - { src: pgpool.j2, dest: /etc/logrotate.d/pgpool }
+    - { src: pgpool_syslog.conf.j2, dest: /etc/rsyslog.d/pgpool.conf }
+  notify: Restart rsyslog
+
+- meta: flush_handlers
+
+...

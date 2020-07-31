@@ -1,0 +1,36 @@
+#!/bin/sh
+# ******************************************************************************
+# filename    : pgdb_online_backup_delete.sh
+# description : delete backupfiles created 7 days or more before
+# execuser    : postgres
+# usage       : pgdb_online_backup_delete.sh
+# ******************************************************************************
+# OS          : Red Hat Enterprise Linux 7.x
+# PostgreSQL  : PostgreSQL 9.6.x
+# ******************************************************************************
+# parameter       description
+# --------------  --------------------------------------------------------------
+# N/A
+# ******************************************************************************
+
+################################################################################
+# Set Environment
+################################################################################
+LOG_FILE={{ pg_script_log_dir }}/pgdb_online_backup_delete.log
+BACKUP_DIR=/var/lib/pgsql/9.6/backups/basebackup
+pp () { date "+%Y/%m/%d %H:%M:%S $*" >> $LOG_FILE; }
+
+
+################################################################################
+#  Delete Online Backup Files ( created 7 days or more before )
+################################################################################
+pp --- BEGIN pgdb_online_backup_delete.sh ---
+
+find $BACKUP_DIR -name 'pg_basebackup*' -type d -mtime +{{ pg_online_backup_keep_day }} | xargs rm -rf >> $LOG_FILE 2>&1
+
+if [ $? -ne 0 ]; then
+    pp Error occured. [delete online backup file]
+    exit 64
+fi
+
+pp --- END pgdb_online_backup_delete.sh ---

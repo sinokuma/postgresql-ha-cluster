@@ -1,0 +1,26 @@
+###################
+# Install Product
+###################
+pg_version: 9.6.8
+pg_yum_repository: http://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7.4-x86_64/pgdg-redhat96-9.6-3.noarch.rpm
+
+###################
+# Common Settings for Custom Operation Script
+###################
+pg_script_log_dir: "{{ pg_log_directory }}/script_log"
+pg_log_generation: 30
+
+###################
+# /usr/pgsql-9.6/bin/pgdb_wal_archive_delete.sh
+###################
+pg_wal_keep_day: 7
+
+###################
+# /usr/pgsql-9.6/bin/pgdb_logical_backup_delete.sh
+###################
+pg_logical_backup_keep_day: 7
+
+###################
+# /usr/pgsql-9.6/bin/pgdb_online_backup_delete.sh
+###################
+pg_online_backup_keep_day: 7

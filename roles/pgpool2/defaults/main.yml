@@ -1,0 +1,80 @@
+###################
+# Install Product
+###################
+pgp2_version: 3.7.3
+pgp2_yum_repository: http://www.pgpool.net/yum/rpms/3.7/redhat/rhel-7-x86_64/pgpool-II-release-3.7-1.noarch.rpm
+
+###################
+# OS User
+###################
+# Please set a value which does not overlap with others.
+pgp2_user_id: 2000
+pgp2_group_id: 2000
+
+###################
+# /etc/pgpool-II/pgpool.conf
+###################
+### CONNECTIONS
+####  pgpool Connection Settings
+pgp2_listen_addresses: "*"  # changed
+pgp2_port: 9999
+####  pgpool Communication Manager Connection Settings
+pgp2_pcp_listen_addresses: "*"
+pgp2_pcp_port: 9898
+####  Backend Connection Settings
+pgp2_backend_weight0: 1
+pgp2_backend_weight1: 1
+####  Authentication
+# If you are using md5 for PostgreSQL client authentication, please do not change.
+pgp2_enable_pool_hba: "on"  # changed
+pgp2_authentication_timeout: 60
+### POOLS
+# pgp2_num_init_children * pgp2_max_pool = max connections to backend PostgreSQL
+pgp2_num_init_children: 32
+pgp2_max_pool: 4
+### LOGS
+#### What to log
+pgp2_log_standby_delay: always  # changed
+pgp2_log_per_node_statement: "on" # changed
+### FILE LOCATIONS
+pgp2_logdir: /var/log/pgpool
+### CONNECTION POOLING
+pgp2_connection_cache: "on"
+### LOAD BALANCING MODE
+pgp2_load_balance_mode: "on"  # changed
+### MASTER/SLAVE MODE
+#### Streaming
+pgp2_sr_check_period: 5  # changed
+### HEALTH CHECK GLOBAL PARAMETERS
+pgp2_health_check_period: 5 # changed
+pgp2_health_check_timeout: 20
+pgp2_health_check_max_retries: 10 # changed
+pgp2_health_check_retry_delay: 1
+pgp2_connect_timeout: 10000
+### ONLINE RECOVERY
+pgp2_recovery_timeout: 90
+### WATCHDOG
+#### Watchdog communication Settings
+pgp2_wd_port: 9000
+#### heartbeat mode
+pgp2_wd_heartbeat_port: 9694
+pgp2_heartbeat_destination_port0: "{{ pgp2_wd_heartbeat_port }}"
+#### Other pgpool Connection Settings
+pgp2_other_pgpool_port0: "{{ pgp2_port }}"
+pgp2_other_wd_port0: "{{ pgp2_wd_port }}"
+
+###################
+# /etc/pgpool-II/pcp.conf
+###################
+
+###################
+# /etc/pgpool-II/pool_hba.conf
+###################
+# Only change CIDE-ADDRESS is possible.
+pgp2_cidr_for_pgpool: 0.0.0.0/0
+pgp2_cidr_for_postgres: 0.0.0.0/0
+
+###################
+# /etc/logrotate.d/pgpool
+###################
+pgp2_log_generation: 30

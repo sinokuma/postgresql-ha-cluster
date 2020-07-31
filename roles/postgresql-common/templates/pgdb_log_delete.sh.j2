@@ -1,0 +1,33 @@
+#!/bin/sh
+# ******************************************************************************
+# filename    : pgdb_log_delete.sh
+# description : delete old log files
+# execuser    : postgres
+# usage       : pgdb_log_delete.sh
+# ******************************************************************************
+# OS          : Red Hat Enterprise Linux 7.x
+# PostgreSQL  : PostgreSQL 9.6.x
+# ******************************************************************************
+# parameter       description
+# --------------  --------------------------------------------------------------
+# N/A
+# ******************************************************************************
+
+################################################################################
+# Set Environment
+################################################################################
+LOG_FILE={{ pg_script_log_dir }}/pgdb_log_delete.log
+PG_WAL_ARCHIVE_DIR=/var/lib/pgsql/9.6/backups/pg_xlog_archive
+pp () { date "+%Y/%m/%d %H:%M:%S $*" >> $LOG_FILE; }
+
+pp --- BEGIN pgdb_log_delete.sh delete needless WAL archive ---
+################################################################################
+#  Delete needless WAL archive ( created {{ pg_wal_keep_day }} days or more before )
+################################################################################
+find $PG_WAL_ARCHIVE_DIR -type f -name [0-9]\* -mtime +{{ pg_wal_keep_day }} -ls -exec rm -v {} \; >> $LOG_FILE 2>&1
+
+if [ $? -ne 0 ]; then
+    pp Exception Error occured. [delete wal archive file]
+    exit 66
+fi
+pp --- END pgdb_log_delete.sh delete needless WAL archive ---

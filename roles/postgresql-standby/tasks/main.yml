@@ -1,0 +1,28 @@
+---
+
+- name: Run postgresql-common role
+  include_role:
+    name: postgresql-common
+
+- name: Check for database cluster
+  stat: path={{ pg_data_dir }}/PG_VERSION
+  register: reg_pg_data
+  changed_when: false
+
+- name: copy database cluster from {{ pg_cluster_target_host }}
+  become_user: postgres
+  command: /usr/pgsql-9.6/bin/pg_basebackup -D {{ pg_data_dir }} -h {{ pg_cluster_target_host }} -U replusr -P -X s -R
+  when: reg_pg_data.stat.exists == false
+
+- name: Modify recovery.conf
+  lineinfile:
+    path: "{{ pg_data_dir }}/recovery.conf"
+    state: present
+    line: "primary_slot_name = '{{ pg_repl_slot_name }}'"
+
+- name: Start postgresql
+  systemd:
+    name: postgresql-9.6
+    state: started
+
+...

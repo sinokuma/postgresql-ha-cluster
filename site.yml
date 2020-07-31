@@ -1,0 +1,10 @@
+---
+- hosts: postgresql-ha
+  roles:
+    - { role: postgresql-primary, when: "'postgresql-primary' in group_names" }
+    - { role: postgresql-standby, when: "'postgresql-standby' in group_names" }
+
+- hosts: pgpool2-ha
+  roles:
+    - pgpool2
+...

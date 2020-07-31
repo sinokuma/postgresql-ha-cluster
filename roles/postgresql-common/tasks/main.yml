@@ -1,0 +1,134 @@
+---
+
+- name: Add yum repository for PostgreSQL
+  yum:
+    name: "{{ pg_yum_repository }}"
+    state: present
+  environment:
+    http_proxy: "{{ http_proxy_host.stdout | regex_replace('.*= *([^ ]*)', '\\1') }}:{{ http_proxy_port.stdout | regex_replace('.*= *([^ ]*)', '\\1') }}"
+
+- name: Upload additional module file
+  copy:
+    src: "{{ item }}"
+    dest: /tmp
+  with_items:
+    - pgpool-II-3.7.3.tar.gz
+  changed_when: false
+
+- name: Install PostgreSQL-{{ pg_version }}
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - postgresql96-server-{{ pg_version }}
+    - postgresql96-devel-{{ pg_version }}
+    - pgbadger
+    - python-psycopg2
+
+- name: Check whether pgpool-recovery is installed
+  stat:
+    path: /usr/pgsql-9.6/share/extension/pgpool_recovery.control
+  register: reg_pg_pool_recovery
+  changed_when: false
+
+- name: Extract pgpool-II src
+  unarchive:
+    src: /tmp/pgpool-II-3.7.3.tar.gz
+    dest: /tmp
+    remote_src: yes
+  when: reg_pg_pool_recovery.stat.exists == false
+
+- name: make install pgpool-recovery
+  make:
+    chdir: /tmp/pgpool-II-3.7.3/src/sql/pgpool-recovery
+    target: install
+  environment:
+    PATH: /usr/pgsql-9.6/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  when: reg_pg_pool_recovery.stat.exists == false
+
+- name: Delete local module file
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /tmp/pgpool-II-3.7.3.tar.gz
+    - /tmp/pgpool-II-3.7.3
+  changed_when: false
+
+- name: Create directory and change owner
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    recurse: no
+    owner: postgres
+    group: postgres
+    mode: 0755
+  with_items:
+    - { path: "{{ pg_log_directory }}" }
+    - { path: "{{ pg_log_directory }}/script_log" }
+    - { path: "{{ pg_report_directory }}" }
+    - { path: /var/lib/pgsql/.ssh }
+    - { path: /var/lib/pgsql/9.6/backups/basebackup }
+    - { path: /var/lib/pgsql/9.6/backups/logicalbackup }
+    - { path: /var/lib/pgsql/9.6/backups/pg_xlog_archive }
+
+- name: Upload files
+  copy:
+    src: authorized_keys
+    dest: /var/lib/pgsql/.ssh
+    owner: postgres
+    group: postgres
+    mode: 0600
+
+- name: Set environment variable (PGDATA)
+  lineinfile:
+    path: /var/lib/pgsql/.bash_profile
+    state: present
+    regexp: ^PGDATA=
+    line: "PGDATA={{ pg_data_dir }}"
+
+- name: Modify file of service environment variable (PGDATA)
+  lineinfile:
+    path: /usr/lib/systemd/system/postgresql-9.6.service
+    state: present
+    regexp: ^Environment=PGDATA=
+    line: "Environment=PGDATA={{ pg_data_dir }}"
+
+- name: Systemctl daemon-reload
+  systemd:
+    daemon_reload: yes
+    name: postgresql-9.6
+
+- name: Enable service
+  systemd:
+    name: postgresql-9.6
+    enabled: yes
+
+- name: Copy logrotate configuration file from templates
+  template:
+    src: postgres.j2
+    dest: /etc/logrotate.d/postgres
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Copy backup operation and log clean up script from templates
+  template: src={{ item }} dest=/usr/pgsql-9.6/bin/{{ item | regex_replace(".j2") }} owner=root group=root mode=0755
+  with_items:
+    - pgdb_log_delete.sh.j2
+    - pgdb_logical_backup.sh.j2
+    - pgdb_online_backup.sh.j2
+    - pgdb_logical_backup_delete.sh.j2
+    - pgdb_online_backup_delete.sh.j2
+
+- name: Create cron
+  cron:
+    name: "{{ item.name }}"
+    user: postgres
+    job: "{{ item.job }}"
+    weekday: "{{ item.weekday|default('*') }}"
+    hour: "{{ item.hour|default('*') }}"
+    minute: "{{ item.minute|default('*') }}"
+  with_items: "{{ pg_cron }}"
+
+...

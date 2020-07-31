@@ -1,0 +1,48 @@
+#!/bin/sh
+# ******************************************************************************
+# filename    : pgdb_logical_backup.sh
+# description : get logical backup using pg_dump
+# execuser    : postgres
+# usage       : pgdb_logical_backup.sh <databasename>
+# ******************************************************************************
+# OS          : Red Hat Enterprise Linux 7.x
+# PostgreSQL  : PostgreSQL 9.6.x
+# ******************************************************************************
+# parameter       description
+# --------------  --------------------------------------------------------------
+# databasename    target database name for logical backup
+# ******************************************************************************
+
+################################################################################
+# Set Environment
+################################################################################
+LOG_FILE={{ pg_script_log_dir }}/pgdb_logical_backup.log
+pp () { date "+%Y/%m/%d %H:%M:%S $*" >> $LOG_FILE; }
+
+
+################################################################################
+# Check Parameter
+################################################################################
+if [ $# -ne 1 ]; then
+    echo Usage: `basename $0` "<databasename>" 1>&2
+    exit 64
+fi
+
+BACKUP_DB=$1
+BACKUP_FILE=/var/lib/pgsql/9.6/backups/logicalbackup/${BACKUP_DB}_`date +%Y%m%d`_logical_backup.dmp
+
+
+################################################################################
+# Logical Backup database using pg_dump
+################################################################################
+pp --- BEGIN pgdb_logical_backup.sh  target database: $BACKUP_DB ---
+
+pg_dump -Fc $BACKUP_DB 2>> $LOG_FILE > $BACKUP_FILE
+
+if [ $? -ne 0 ]; then
+    pp Exception Error occured.
+    rm -f $BACKUP_FILE
+    exit 65
+fi
+
+pp --- END pgdb_logical_backup.sh  target database: $BACKUP_DB ----

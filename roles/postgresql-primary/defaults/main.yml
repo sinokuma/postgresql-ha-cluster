@@ -1,0 +1,94 @@
+pg_lc_collate: ja_JP.UTF-8
+pg_lc_ctype: ja_JP.UTF-8
+
+###################
+# {{ pg_data_dir }}/postgresql.conf
+###################
+### FILE LOCATIONS
+pg_hba_file: "{{ pg_data_dir }}/pg_hba.conf"
+pg_ident_file: "{{ pg_data_dir }}/pg_ident.conf"
+### CONNECTIONS AND AUTHENTICATION
+####  Connection Settings
+pg_listen_addresses: "*"
+##### pg_max_connections: This value should be larger than pgpool-II max connections(pgp2_num_init_children * pgp2_max_pool)
+pg_max_connections: 300
+### RESOURCE USAGE(except WAL)
+####  Memory
+##### pg_shared_buffers: Recommended Settings = OS memory * 1/4 (this value is on the premise of 4GB, OS memory.)
+pg_shared_buffers: 1024MB
+pg_temp_buffers: 8MB
+pg_work_mem: 32MB
+pg_maintenance_work_mem: 128MB
+####  Kernel Resource Usage
+pg_shared_preload_libraries: ""
+### WRITE AHEAD LOG
+pg_wal_buffers: -1
+####  Checkpoints
+pg_checkpoint_timeout: 5min
+pg_max_wal_size: 1GB
+pg_min_wal_size: 80MB
+### REPLICATION
+##### pg_max_wal_senders: Recommended Settings = The number of servers + 1~2
+pg_max_wal_senders: 2
+pg_max_replication_slots: 1
+pg_hot_standby_feedback: "on"
+### ERROR REPORTING AND LOGGING
+#### Where to Log
+pg_log_destination: stderr
+pg_logging_collector: "on"
+##### pg_log_filename: if using pg_statsinfo, "pg_log_filename" must not be changed!
+#####                  if changed, PostgreSQL cannnot be started.(Due to the specification of pg_statsinfo)
+pg_log_filename: postgresql.log
+pg_log_file_mode: "0600"
+pg_log_truncate_on_rotation: "on"
+pg_log_rotation_age: 1d
+pg_log_rotation_size: 0
+pg_syslog_facility: LOCAL0
+#### When to Log
+pg_log_min_messages: error
+pg_log_min_error_statement: error
+pg_log_min_duration_statement: 0
+#### What to Log
+pg_log_checkpoints: "on"
+pg_log_connections: "off"
+pg_log_disconnections: "off"
+pg_log_hostname: "off"
+##### pg_log_line_prefix: if pg_logging_collector is "on", you must include %t and %p.
+#####                     because timestamp and process ID never record to log.
+pg_log_line_prefix: "%t [%p]: [%l-1] user=%u, db=%d"
+pg_log_lock_waits: "on"
+pg_log_statement: all
+pg_log_temp_files: 0
+pg_log_timezone: Asia/Tokyo
+### RUNTIME STATISTICS
+#### Query/Index Statistics Collector
+pg_track_functions: all
+### AUTOVACUUM PARAMETERS
+pg_autovacuum: "on"
+pg_log_autovacuum_min_duration: 0
+pg_autovacuum_max_workers: 3
+pg_autovacuum_naptime: 1min
+pg_autovacuum_vacuum_threshold: 50
+pg_autovacuum_analyze_threshold: 50
+pg_autovacuum_vacuum_scale_factor: 0.2
+pg_autovacuum_analyze_scale_factor: 0.1
+pg_autovacuum_freeze_max_age: 200000000
+pg_autovacuum_multixact_freeze_max_age: 400000000
+pg_autovacuum_vacuum_cost_delay: 20ms
+pg_autovacuum_vacuum_cost_limit: -1
+### CLIENT CONNECTION DEFAULTS
+####  Statement Behavior
+pg_search_path: '"$user",public'
+####  Locale and Formatting
+pg_timezone: Asia/Tokyo
+pg_lc_messages: C
+pg_lc_monetary: ja_JP.UTF-8
+pg_lc_numeric: ja_JP.UTF-8
+pg_lc_time: ja_JP.UTF-8
+
+###################
+# {{ pg_data_dir }}/pg_hba.conf
+###################
+pg_ipv4_local_con: host    all             all             0.0.0.0/0               md5
+pg_cidr_for_replication: 0.0.0.0/0
+pg_cidr_for_pgpool: 0.0.0.0/0
